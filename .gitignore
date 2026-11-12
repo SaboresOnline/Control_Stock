@@ -1,0 +1,9 @@
+catalogo_app*.json
+recepcion_*.json
+*.pdf
+*.xlsx
+*.jpg
+*.jpeg
+.env
+.DS_Store
+Thumbs.db
