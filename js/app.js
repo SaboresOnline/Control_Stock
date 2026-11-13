@@ -256,7 +256,7 @@ async function leerComprobante() {
     }
     rec.renglones.forEach((x, i) => { x.linea = i + 1; });
     await guardarRec();
-    aviso(`Se leyeron ${d.renglones.length} renglones${d.cortado ? ' (el comprobante es largo y puede faltar el final: revisalo)' : ''}. Gasto del mes: US$ ${r.gasto.usd.toFixed(3)}.`, d.cortado ? 'mal' : 'bien');
+    aviso(`Se leyeron ${d.renglones.length} renglones${d.cortado ? ' (el comprobante es largo y puede faltar el final: revisalo)' : ''}.${r.uso ? ` Gasto del mes: US$ ${r.gasto.usd.toFixed(3)}.` : ''}`, d.cortado ? 'mal' : 'bien');
   } catch (e) { aviso(e.message, 'mal'); }
   cerrarCapa(o); pintar();
 }

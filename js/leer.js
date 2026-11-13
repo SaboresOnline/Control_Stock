@@ -113,6 +113,8 @@ Reglas:
  * Devuelve { datos, uso, gasto } o tira un error con un mensaje para mostrar.
  */
 export async function leerConClaude(entrada, cfg) {
+  const dentro = await enArtefacto();
+  if (dentro) return leerEnArtefacto(dentro, entrada);
   if (!cfg.api_clave) throw new Error('Falta la clave de la API. Cargala en Configuración › Lectura con IA.');
   if (!navigator.onLine) throw new Error('No hay señal. La foto queda guardada: leela cuando vuelva la conexión, o cargá los renglones a mano.');
   const g = await gastoDelMes();
@@ -135,6 +137,36 @@ export async function leerConClaude(entrada, cfg) {
   let datos; try { datos = JSON.parse(texto.slice(i, f + 1)); } catch { throw new Error('La lectura no devolvió datos que se puedan usar. Probá con otra foto, más derecha y con luz, o cargá a mano.'); }
   if (j.stop_reason === 'max_tokens') datos.cortado = true;
   return { datos, uso: j.usage, gasto, modelo };
+}
+
+// Dentro de un artefacto de Claude no hay clave: la página le pide la lectura a Claude con la cuenta de quien la mira.
+let _muestra;
+async function enArtefacto() {
+  if (_muestra === undefined) { try { _muestra = globalThis.claude && globalThis.claude.use ? await globalThis.claude.use('sample') : null; } catch { _muestra = null; } }
+  return _muestra || null;
+}
+export const lecturaSinClave = async () => !!(await enArtefacto());
+async function leerEnArtefacto(muestra, entrada) {
+  const opciones = { cache: false, modelTier: 'default' };
+  let pedido = INSTRUCCIONES + '\n\n';
+  if (entrada.imagenes && entrada.imagenes.length) {
+    const lim = await muestra.limits().catch(() => null);
+    if (!lim || !lim.images) throw new Error('Esta vista no puede mandar imágenes a Claude. Cargá los renglones a mano.');
+    const fotos = [];
+    for (const b of entrada.imagenes.slice(0, lim.images.maxCount || 4)) fotos.push((await achicar(b, 1568, 0.85)).blob);
+    opciones.images = fotos;
+    pedido += 'Leé el comprobante de las imágenes adjuntas (puede tener varias páginas) y devolvé el JSON.';
+  } else pedido += 'Texto extraído del PDF del comprobante, renglón por renglón:\n\n' + String(entrada.texto || '').slice(0, 60000) + '\n\nDevolvé el JSON.';
+  let r;
+  try { r = await muestra(pedido, opciones); }
+  catch (e) {
+    const m = { not_granted: 'No se dio permiso para usar Claude en esta página. Cargá los renglones a mano.', rate_limited: 'Claude está ocupado. Probá de nuevo en un minuto.', images_unavailable: 'Esta vista no puede mandar imágenes a Claude.', cancelled: 'Se canceló la lectura.' };
+    throw new Error(m[e && e.code] || 'No se pudo leer con Claude' + (e && e.code ? ` (${e.code})` : '') + '. Probá de nuevo o cargá a mano.');
+  }
+  const texto = r.text || '', i = texto.indexOf('{'), f = texto.lastIndexOf('}');
+  let datos; try { datos = JSON.parse(texto.slice(i, f + 1)); } catch { throw new Error('La lectura no devolvió datos que se puedan usar. Probá con otra foto, más derecha y con luz, o cargá a mano.'); }
+  if (r.truncated) datos.cortado = true;
+  return { datos, uso: null, gasto: await gastoDelMes(), modelo: 'claude (artefacto)' };
 }
 
 /** Pasa lo que devolvió el modelo a los campos de la app, con los números limpios. */
