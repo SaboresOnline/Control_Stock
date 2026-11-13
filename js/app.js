@@ -81,6 +81,7 @@ function pantallaSinCatalogo() {
     <p>Para empezar hace falta el catálogo de Sabores_Gestion.</p>
     <p class="suave">En la PC: Sistema › Importaciones › <b>Exportar para la app</b>. Pasá <code>catalogo_app.json</code> al teléfono (Drive, mail o cable) y elegilo acá.</p>
     <label class="boton fuerte ancho">Elegir catalogo_app.json<input type="file" accept=".json,application/json" data-in="catalogo" hidden></label>
+    ${globalThis.SPC_DEMO ? '<button class="boton ancho" data-acc="demo">Probar con datos de ejemplo</button>' : ''}
     <p class="suave pie">Versión ${VERSION}. Los datos quedan sólo en este teléfono.</p></div>`;
 }
 function pantallaEntrar() {
@@ -584,6 +585,7 @@ async function pantallaConfig() {
 // ---------- acciones ----------
 const acciones = {
   ir: (b) => ir(b.dataset.a),
+  demo: async () => { await cat.importar(JSON.stringify(globalThis.SPC_DEMO)); aviso('Catálogo de ejemplo cargado: son datos inventados.', 'bien'); pintar(); },
   cerrar: () => cerrarCapa(),
   'elegir-usuario': (b) => elegirUsuario(b.dataset.id),
   'cambiar-usuario': async () => { if (await confirmar(`¿Cerrar la sesión de ${yo().nombre}?`, 'Cambiar de usuario', 'Seguir')) { ses.salir(); pintar(); } },
